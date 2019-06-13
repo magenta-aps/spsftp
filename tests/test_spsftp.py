@@ -1,11 +1,12 @@
 import unittest
-from spsftp.spsftp import SpSftp
+from spsftp.spsftp import SpSftp, MetadataError
 import io
-import collections
 
-xmlfile="""
-<ns2:Trigger xmlns:ns2="http://serviceplatformen.dk/xml/wsdl/soap11/SFTP/1/types">
-<FileTransferUUID>42</FileTransferUUID>
+xmlfile="""<ns2:Trigger
+xmlns:ns2="http://serviceplatformen.dk/xml/wsdl/soap11/SFTP/1/types">
+<FileTransferUUID>
+47570fc2-be65-4ab1-8da7-3bcc086bfef9
+</FileTransferUUID>
 <FileDescriptor>
 <FileName>hellofile</FileName>
 <SizeInBytes>11</SizeInBytes>
@@ -15,6 +16,7 @@ xmlfile="""
 </ns2:Trigger>
 """
 hellofile = "hello there"
+
 
 class SftpMock:
 
@@ -32,13 +34,20 @@ class SftpMock:
             self.triggerfile = fl
         return self
 
+
 class SpSftpMock(SpSftp):
 
-    get_key = lambda self, filename, password: "Key"
-    get_transport = lambda self: "Transport"
-    sftp_client=SftpMock()
-    def connect(self):pass
+    sftp_client = SftpMock()
+
+    def get_key(self, filename, password):
+        return "Key"
+
+    def get_transport(self):
+        return "Transport"
+
+    def connect(self): pass
     def disconnect(self): pass
+
 
 class Tests(unittest.TestCase):
 
@@ -54,22 +63,43 @@ class Tests(unittest.TestCase):
         self.assertEqual(self.spsftp.key, "Key")
         self.assertEqual(self.spsftp.transport, "Transport")
 
-    def test_recv_wrong_recipient(self):
-        fl = io.BytesIO()
-        self.spsftp.username="A"
-        self.spsftp.recv("hellofile", fl,  "kong-christian")
-        self.assertEqual("", fl.getvalue().decode("utf-8"))
-
     def test_recv_unknown_sender(self):
-        fl = io.BytesIO()
-        self.spsftp.recv("hellofile", fl,  "kong-kristian")
-        self.assertEqual("", fl.getvalue().decode("utf-8"))
+        with self.assertLogs('spsftp', level='WARNING'):
+            fl = io.BytesIO()
+            with self.assertRaisesRegex(
+                MetadataError,
+                "Sender kong-christian not acknowledged as kong-kristian"
+            ):
+                self.spsftp.recv("hellofile", fl,  "kong-kristian")
+
+    def test_recv_wrong_recipient(self):
+        with self.assertLogs('spsftp', level='WARNING'):
+            fl = io.BytesIO()
+            self.spsftp.username = "A"
+            with self.assertRaisesRegex(
+                MetadataError,
+                "A not in Recipients: x"
+            ):
+                self.spsftp.recv("hellofile", fl,  "kong-christian")
+
+    def test_recv_unknown_sender_and_wrong_recipient(self):
+        with self.assertLogs('spsftp', level='WARNING'):
+            fl = io.BytesIO()
+            self.spsftp.username = "A"
+            with self.assertRaisesRegex(
+                MetadataError,
+                "Sender kong-christian not acknowledged as kong-kristian"
+                ", A not in Recipients: x"
+            ):
+                self.spsftp.recv("hellofile", fl,  "kong-kristian")
 
     def test_recv_good(self):
-        fl = io.BytesIO()
-        self.spsftp.recv("hellofile", fl,  "kong-christian")
-        self.assertEqual(hellofile, fl.getvalue().decode("utf-8"))
+        with self.assertLogs('spsftp', level='INFO'):
+            fl = io.BytesIO()
+            self.spsftp.recv("hellofile", fl,  "kong-christian")
+            self.assertEqual(hellofile, fl.getvalue().decode("utf-8"))
 
     def test_send(self):
-        fl = io.BytesIO("hello-there".encode("utf-8"))
-        self.spsftp.send(fl, "hellofile", "kong-christian")
+        with self.assertLogs('spsftp', level='INFO'):
+            fl = io.BytesIO("hello-there".encode("utf-8"))
+            self.spsftp.send(fl, "hellofile", "kong-christian")

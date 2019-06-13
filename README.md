@@ -2,9 +2,12 @@
 
 An sftp-client for danish sftp.serviceplatformen.dk, using trigger- and metadata files as a means of routing things around to other users
 
-This library has only taken the term called 'simple transfer' into account.
+This library has only taken the term called 'simple transfer' into account.  
+This refers to paragraph 3.1 in this document [Vejledning til Serviceplatformens SFTP Service.pdf](https://share-komm.kombit.dk/P133/Ibrugtagning%20og%20test/Delte%20dokumenter/Vejledning%20til%20Serviceplatformens%20SFTP%20Service.pdf) as of June 13, 2019
 
-This is paragraph 3.1 in this document [Vejledning til Serviceplatformens SFTP Service.pdf](https://share-komm.kombit.dk/P133/Ibrugtagning%20og%20test/Delte%20dokumenter/Vejledning%20til%20Serviceplatformens%20SFTP%20Service.pdf)
+A significant part of this library has been extracted from [cpr_udtraek](https://github.com/magenta-aps/cpr\_udtraek)
+
+## Usage:
 
 Create an instance of SpSftp and connect to the service
 
@@ -44,3 +47,4 @@ Getting receipts for the sent files is a manual procedure, just use the internal
 Disconnect from the service
 
     sftp.disconnect()
+

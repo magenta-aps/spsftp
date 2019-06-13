@@ -8,13 +8,12 @@ import paramiko
 import logging
 import xmltodict
 import hashlib
-import os
 import io
 
 logger = logging.getLogger("spsftp")
 
-triggerfile="""\
-<ns2:Trigger xmlns:ns2="http://serviceplatformen.dk/xml/wsdl/soap11/SFTP/1/types">
+triggerfile = """<ns2:Trigger
+xmlns:ns2="http://serviceplatformen.dk/xml/wsdl/soap11/SFTP/1/types">
 <FileDescriptor>
 <FileName>%(filename)s</FileName>
 <SizeInBytes>%(filesize)s</SizeInBytes>
@@ -25,6 +24,11 @@ triggerfile="""\
 <FileContentDescriptor>
 </FileContentDescriptor>
 </ns2:Trigger>"""
+
+
+class MetadataError(Exception):
+    pass
+
 
 class SpSftp(object):
     """ upload and fetch from serviceplatformen
@@ -42,7 +46,6 @@ class SpSftp(object):
         self.host = settings.get('host', 'sftp.serviceplatformen.dk')
         self.port = int(settings.get('port', 22))
 
-
         self.key = self.get_key(
             filename=settings.get('ssh_key_path'),
             password=settings.get('ssh_key_passphrase')
@@ -50,8 +53,7 @@ class SpSftp(object):
 
         self.transport = self.get_transport()
 
-
-    def get_key(self):
+    def get_key(self, filename, password):
         return paramiko.RSAKey.from_private_key_file(filename, password)
 
     def get_transport(self):
@@ -86,11 +88,14 @@ class SpSftp(object):
         remotepath = "OUT/" + filename
         sender = self.username
         fileid = hashlib.sha1(remotepath.encode("utf-8")).hexdigest()
+        logger.debug("uploading %s", remotepath)
         filesize = self.sftp_client.putfo(fl, remotepath).st_size
+        logger.debug("uploading %s.trigger", remotepath)
         self.sftp_client.putfo(
             io.StringIO(triggerfile % locals()),
             remotepath + ".trigger"
         )
+        logger.info("sent: %s to %s", filename, recipient)
 
     def recv(self, filename, fl, sender):
         """ download both file and metadatafile
@@ -98,14 +103,17 @@ class SpSftp(object):
         """
         remotepath = "IN/" + filename
         metafl = io.BytesIO()
+        logger.debug("downloading %s.metadata", remotepath)
         self.sftp_client.getfo(
             remotepath + ".metadata",
             metafl,
         )
-        errors = []
+
         metadata = xmltodict.parse(metafl.getvalue())["ns2:Trigger"]
         xferid = metadata["FileTransferUUID"]
         filedescriptor = metadata["FileDescriptor"]
+
+        errors = []
         if sender != filedescriptor["Sender"]:
             errors.append(
                 "Sender %s not acknowledged as %s"
@@ -119,33 +127,13 @@ class SpSftp(object):
 
         if errors:
             logger.warning(
-                "ignoring file %s because of errors in %s: %r "
-                % (filename, filename+".metadata", errors)
+                "ignoring '%s' (FileTransferUUID: %s)"
+                " because of errors in %s: %r "
+                % (filename, xferid, filename+".metadata",  errors)
             )
+            raise MetadataError("File %s (FileTransferUUID: %s): "
+                                % (filename, xferid) + ", ".join(errors))
         else:
             self.sftp_client.getfo(remotepath, fl)
-            logger.info("succesfully fetched and validated %s" % filename)
-
-if __name__ == '__main__':
-    sftp = SpSftp({
-        "user": "clint",
-        "host": "cprsftp-28787",
-        "ssh_key_path": "/home/clint/.ssh/id_rsa",
-        "ssh_key_passphrase": "",
-    })
-
-    logging.basicConfig(
-        format='%(levelname)s %(asctime)s %(name)s %(message)s',
-        level=logging.DEBUG
-    )
-
-
-    logging.root.setLevel(logging.DEBUG)
-    sftp.connect()
-    print(sftp.listdir("IN"))
-    f1 = io.BytesIO("hello-there".encode("utf-8"))
-    sftp.send(f1, "hellofile", "kong-christian")
-    print(sftp.listdir("OUT"))
-    f2 = io.BytesIO()
-    sftp.recv("hellofile", f2,  "kong-kristian")
-    sftp.disconnect()
+            logger.info("succesfully fetched and validated %s from %s",
+                        filename, filedescriptor["Sender"])

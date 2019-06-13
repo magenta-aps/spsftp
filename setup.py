@@ -18,9 +18,10 @@ setup(
     version=read("VERSION"),
     author="Jørgen Gårdsted Jørgensen",
     author_email="jgj@magenta-aps.dk",
-    description=("library for serviceplatformen sftp with trigger- and metadata-files"),
+    description=("library for serviceplatformen sftp"
+                 " with trigger- and metadata-files"),
     license="MPL",
-    keywords="sts solr os2mo lora",
+    keywords="sftp serviceplatformen",
     url="",
     packages=['spsftp'],
     long_description=read('README.md'),
