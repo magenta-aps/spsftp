@@ -32,7 +32,7 @@ class MetadataError(Exception):
 
 
 class SpSftp(object):
-    """ upload and fetch from serviceplatformen
+    """ Upload and fetch from serviceplatformen
         providing trigger and using metadata-files
     """
 
@@ -78,12 +78,12 @@ class SpSftp(object):
         self.sftp_client = None
 
     def listdir(self, directory):
-        """ list all the remote files in chosen directory
+        """ List all the remote files in chosen directory
         """
         return self.sftp_client.listdir(directory)
 
     def send(self, fl, filename, recipient):
-        """ upload both file and triggerfile
+        """ Upload both file and triggerfile
         to serviceplatformen OUT folder
         """
         remotepath = "OUT/" + filename
@@ -105,7 +105,7 @@ class SpSftp(object):
                     filename, fileid, recipient)
 
     def recv(self, filename, fl, sender):
-        """ download both file and metadatafile
+        """ Download both file and metadatafile
         from serviceplatformen IN folder
         """
         remotepath = "IN/" + filename
