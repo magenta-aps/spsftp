@@ -8,6 +8,7 @@ import paramiko
 import logging
 import xmltodict
 import hashlib
+import uuid
 import io
 
 logger = logging.getLogger("spsftp")
@@ -37,7 +38,7 @@ class SpSftp(object):
 
     def __init__(self, settings={}):
         """Constructor.
-        :param settings: user, host, port, ssh_key, ssh_key_passphrase
+        :param settings: user, host, port, ssh_key_path, ssh_key_passphrase
         :type settings: dict
         :return: void
         :rtype: None"""
@@ -57,7 +58,7 @@ class SpSftp(object):
         return paramiko.RSAKey.from_private_key_file(filename, password)
 
     def get_transport(self):
-        self.transport = paramiko.Transport((self.host, self.port))
+        return paramiko.Transport((self.host, self.port))
 
     def connect(self):
         """Opens connection to sftp server.
@@ -87,15 +88,21 @@ class SpSftp(object):
         """
         remotepath = "OUT/" + filename
         sender = self.username
-        fileid = hashlib.sha1(remotepath.encode("utf-8")).hexdigest()
+        fileid = str(uuid.uuid4())
         logger.debug("uploading %s", remotepath)
         filesize = self.sftp_client.putfo(fl, remotepath).st_size
         logger.debug("uploading %s.trigger", remotepath)
         self.sftp_client.putfo(
-            io.StringIO(triggerfile % locals()),
-            remotepath + ".trigger"
+            io.StringIO(triggerfile % {
+                "filename": filename,
+                "sender": sender,
+                "fileid": fileid,
+                "recipient": recipient,
+                "filesize": filesize,
+            }), remotepath + ".trigger"
         )
-        logger.info("sent: %s to %s", filename, recipient)
+        logger.info("sent: %s (SendersFileId: %s) to %s",
+                    filename, fileid, recipient)
 
     def recv(self, filename, fl, sender):
         """ download both file and metadatafile
