@@ -66,21 +66,16 @@ class SpSftp(object):
         :rtype: None"""
 
         self.transport.connect(username=self.username, pkey=self.key)
-        self.sftp_client = paramiko.SFTPClient.from_transport(self.transport)
+        self.sftp = paramiko.SFTPClient.from_transport(self.transport)
 
     def disconnect(self):
         """Closes connection to sftp server.
         :return: void
         :rtype: None"""
 
-        self.sftp_client.close()
+        self.sftp.close()
         self.transport.close()
-        self.sftp_client = None
-
-    def listdir(self, directory):
-        """ List all the remote files in chosen directory
-        """
-        return self.sftp_client.listdir(directory)
+        self.sftp = None
 
     def send(self, fl, filename, recipient):
         """ Upload both file and triggerfile
@@ -90,9 +85,9 @@ class SpSftp(object):
         sender = self.username
         fileid = str(uuid.uuid4())
         logger.debug("uploading %s", remotepath)
-        filesize = self.sftp_client.putfo(fl, remotepath).st_size
+        filesize = self.sftp.putfo(fl, remotepath).st_size
         logger.debug("uploading %s.trigger", remotepath)
-        self.sftp_client.putfo(
+        self.sftp.putfo(
             io.StringIO(triggerfile % {
                 "filename": filename,
                 "sender": sender,
@@ -111,7 +106,7 @@ class SpSftp(object):
         remotepath = "IN/" + filename
         metafl = io.BytesIO()
         logger.debug("downloading %s.metadata", remotepath)
-        self.sftp_client.getfo(
+        self.sftp.getfo(
             remotepath + ".metadata",
             metafl,
         )
@@ -141,6 +136,6 @@ class SpSftp(object):
             raise MetadataError("File %s (FileTransferUUID: %s): "
                                 % (filename, xferid) + ", ".join(errors))
         else:
-            self.sftp_client.getfo(remotepath, fl)
+            self.sftp.getfo(remotepath, fl)
             logger.info("succesfully fetched and validated %s from %s",
                         filename, filedescriptor["Sender"])

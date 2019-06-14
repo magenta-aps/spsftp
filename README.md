@@ -11,40 +11,49 @@ A significant part of this library has been extracted from [cpr_udtraek](https:/
 
 Create an instance of SpSftp and connect to the service
 
-    spsftp = SpSftp({
+    from spsftp import SpSftp, MetadataError
+
+    sp = SpSftp({
         "user": "int",
         "host": "sftp-287",
         "ssh_key_path": "/home/int/.ssh/id_rsa",
         "ssh_key_passphrase": "",
     })
-    sftp.connect()
+    sp.connect()
 
-See what is currently in the outgoing folder on the server
+SpSftp is just a thin wrapper around Paramikos [SFTPClient](http://docs.paramiko.org/en/latest/api/sftp.html), making use of it's putfo and getfo methods.
+In order for You to use the rest of the SFTPClient, use SpSftps sftp object attribute.
 
-    print(sftp.listdir("OUT"))
+    print(sp.sftp.listdir("OUT"))
 
 Write a string 'hello-there' to a file named 'hellofile' in the OUT-folder on the server and ask for it to be transferred to the user 'kong-christian's IN-folder
 
-    f1 = io.BytesIO("hello-there".encode("utf-8"))
-    sftp.send(f1, "hellofile", "kong-christian")
+    fl = io.BytesIO("hello-there".encode("utf-8"))
+    sp.send(fl, "hellofile", "kong-christian")
+
+If You have been writing into the file using its 'write' method, remember to reset filepointer before sending, if You want to send the whole file.
+
+    fl.seek(0)
 
 See what is currently in the incoming folder on the server
 
-    print(sftp.listdir("IN"))
+    print(sp.sftp.listdir("IN"))
 
-Receive a file called 'hellofile' from user 'kong-kristian' and verify that it was actually sent from 'kong-kristian' and that I was indeed among the designated recipients
+Receive a file called 'hellofile' from user 'kong-kristian' and verify that it was actually sent from 'kong-kristian' and that I was indeed among the designated recipients. MetadataError will be raised if sender and receiver could not be verified.
 
-    f2 = io.BytesIO()
-    sftp.recv("hellofile", f2,  "kong-kristian")
+    try:
+        fl = io.BytesIO()
+        sp.recv("hellofile", fl,  "kong-kristian")
+    except MetadataError as e:
+        print(e)  # e tells which validations that failed
+        raise
 
+Getting receipts for the sent files can be done using the sftp object attribute 
 
-Getting receipts for the sent files is a manual procedure, just use the internal sftp\_client object.
-
-    f3 = io.BytesIO()
-    spsftp.sftp_client.getfo('hellofile.sftpreceipt', f3)
-
+    fl = io.BytesIO()
+    sp.sftp.getfo('hellofile.sftpreceipt', fl)
 
 Disconnect from the service
 
-    sftp.disconnect()
+    sp.disconnect()
 
