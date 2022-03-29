@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "spsftp"
+version = "0.0.1"
+description = "Small library for sending/receiving files using the Serviceplatformen sftp 'simple file transfer'"
+authors = ["Magenta ApS <info@magenta.dk>"]
+license = "MPL-2.0"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+paramiko = "^2.10.3"
+xmltodict = "^0.12.0"
+
+[tool.poetry.dev-dependencies]
+black = "^22.3.0"
+pre-commit = "^2.17.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

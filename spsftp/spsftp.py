@@ -32,8 +32,8 @@ class MetadataError(Exception):
 
 
 class SpSftp(object):
-    """ Upload and fetch from serviceplatformen
-        providing trigger and using metadata-files
+    """Upload and fetch from serviceplatformen
+    providing trigger and using metadata-files
     """
 
     def __init__(self, settings={}):
@@ -43,13 +43,13 @@ class SpSftp(object):
         :return: void
         :rtype: None"""
 
-        self.username = settings.get('user')
-        self.host = settings.get('host', 'sftp.serviceplatformen.dk')
-        self.port = int(settings.get('port', 22))
+        self.username = settings.get("user")
+        self.host = settings.get("host", "sftp.serviceplatformen.dk")
+        self.port = int(settings.get("port", 22))
 
         self.key = self.get_key(
-            filename=settings.get('ssh_key_path'),
-            password=settings.get('ssh_key_passphrase')
+            filename=settings.get("ssh_key_path"),
+            password=settings.get("ssh_key_passphrase"),
         )
 
         self.transport = self.get_transport()
@@ -78,7 +78,7 @@ class SpSftp(object):
         self.sftp = None
 
     def send(self, fl, filename, recipient):
-        """ Upload both file and triggerfile
+        """Upload both file and triggerfile
         to serviceplatformen OUT folder
         """
         remotepath = "OUT/" + filename
@@ -88,19 +88,22 @@ class SpSftp(object):
         filesize = self.sftp.putfo(fl, remotepath).st_size
         logger.debug("uploading %s.trigger", remotepath)
         self.sftp.putfo(
-            io.StringIO(triggerfile % {
-                "filename": filename,
-                "sender": sender,
-                "fileid": fileid,
-                "recipient": recipient,
-                "filesize": filesize,
-            }), remotepath + ".trigger"
+            io.StringIO(
+                triggerfile
+                % {
+                    "filename": filename,
+                    "sender": sender,
+                    "fileid": fileid,
+                    "recipient": recipient,
+                    "filesize": filesize,
+                }
+            ),
+            remotepath + ".trigger",
         )
-        logger.info("sent: %s (SendersFileId: %s) to %s",
-                    filename, fileid, recipient)
+        logger.info("sent: %s (SendersFileId: %s) to %s", filename, fileid, recipient)
 
     def recv(self, filename, fl, sender):
-        """ Download both file and metadatafile
+        """Download both file and metadatafile
         from serviceplatformen IN folder
         """
         remotepath = "IN/" + filename
@@ -118,8 +121,7 @@ class SpSftp(object):
         errors = []
         if sender != filedescriptor["Sender"]:
             errors.append(
-                "Sender %s not acknowledged as %s"
-                % (filedescriptor["Sender"], sender)
+                "Sender %s not acknowledged as %s" % (filedescriptor["Sender"], sender)
             )
         if self.username not in filedescriptor["Recipients"]:
             errors.append(
@@ -131,11 +133,16 @@ class SpSftp(object):
             logger.warning(
                 "ignoring '%s' (FileTransferUUID: %s)"
                 " because of errors in %s: %r "
-                % (filename, xferid, filename+".metadata",  errors)
+                % (filename, xferid, filename + ".metadata", errors)
             )
-            raise MetadataError("File %s (FileTransferUUID: %s): "
-                                % (filename, xferid) + ", ".join(errors))
+            raise MetadataError(
+                "File %s (FileTransferUUID: %s): " % (filename, xferid)
+                + ", ".join(errors)
+            )
         else:
             self.sftp.getfo(remotepath, fl)
-            logger.info("succesfully fetched and validated %s from %s",
-                        filename, filedescriptor["Sender"])
+            logger.info(
+                "succesfully fetched and validated %s from %s",
+                filename,
+                filedescriptor["Sender"],
+            )
