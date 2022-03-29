@@ -1,0 +1,36 @@
+# SPDX-FileCopyrightText: 2022 Magenta ApS
+# SPDX-License-Identifier: MPL-2.0
+
+stages:
+  - lint
+  - release
+
+include:
+  - project: labs/salt-automation
+    ref: master
+    file: gitlab-ci-templates/common/rules.v1.yml
+
+Pre-commit:
+  stage: lint
+  interruptible: true
+  needs: []
+  image: python:3.8
+  before_script:
+    # Install pre-commit
+    - pip install pre-commit
+  script:
+    - pre-commit run --all-files
+
+Release to PyPI:
+  extends:
+    - .rules:semver-core
+  stage: release
+  needs: []
+  image: python:3.8-slim
+  variables:
+    POETRY_VERSION: "1.1.11"
+    POETRY_VIRTUALENVS_CREATE: "true"
+    POETRY_VIRTUALENVS_IN_PROJECT: "true"
+  script: poetry publish --build -u __token__ -p $PYPI_TOKEN
+  before_script:
+    - pip install --no-cache-dir poetry==${POETRY_VERSION}
